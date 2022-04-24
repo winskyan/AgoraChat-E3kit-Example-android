@@ -1,4 +1,4 @@
-package com.virgiltest.cardoso.e3kitandroiddemo
+package io.agora.e3kitdemo
 
 import android.os.Bundle
 import android.os.StrictMode
@@ -37,8 +37,8 @@ class MainActivity : AppCompatActivity() {
 
         log = ::logTextView
 
-        alice = Device("Alice", this.applicationContext)
-        bob = Device("Bob", this.applicationContext)
+        alice = Device("qqqqq", this.applicationContext)
+        bob = Device("wwwwww", this.applicationContext)
 
         main()
     }

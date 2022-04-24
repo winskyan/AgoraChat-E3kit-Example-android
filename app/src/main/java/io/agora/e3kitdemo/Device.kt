@@ -1,6 +1,7 @@
-package com.virgiltest.cardoso.e3kitandroiddemo
+package io.agora.e3kitdemo;
 
 import android.content.Context
+import android.util.Log
 import com.virgilsecurity.android.common.exception.EThreeException
 import com.virgilsecurity.android.common.model.EThreeParams
 import com.virgilsecurity.android.common.model.FindUsersResult
@@ -8,31 +9,30 @@ import com.virgilsecurity.android.ethree.interaction.EThree
 import com.virgilsecurity.common.callback.OnCompleteListener
 import com.virgilsecurity.common.callback.OnResultListener
 import com.virgilsecurity.sdk.cards.Card
-
 import org.json.JSONException
 import org.json.JSONObject
-
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.system.measureTimeMillis
 
-class Device(val identity: String, val context: Context) {
+class Device(val identity: String, private val context: Context) {
 
-    var eThree: EThree? = null
+    private var eThree: EThree? = null
 
     private val benchmarking = false
 
     fun _log(e: String) {
         log("[$identity] $e")
+        Log.i("e3kit", e)
     }
 
     fun initialize(callback: () -> Unit) {
 
         //# start of snippet: e3kit_authenticate
         fun authenticate(): String {
-            val baseUrl = "http://10.0.2.2:3000/authenticate"
+            val baseUrl = "http://a41.easemob.com/authenticate"
             val fullUrl = URL(baseUrl)
 
             val urlConnection = fullUrl.openConnection() as HttpURLConnection
@@ -69,7 +69,7 @@ class Device(val identity: String, val context: Context) {
         //# start of snippet: e3kit_jwt_callback
         fun getVirgilJwt(authToken: String): String {
             try {
-                val baseUrl = "http://10.0.2.2:3000/virgil-jwt"
+                val baseUrl = "http://a41.easemob.com/virgil-jwt"
                 val fullUrl = URL(baseUrl)
 
                 val urlConnection = fullUrl.openConnection() as HttpURLConnection
@@ -101,6 +101,7 @@ class Device(val identity: String, val context: Context) {
 
         //# start of snippet: e3kit_initialize
         val eThreeParams = EThreeParams(identity, { getVirgilJwt(authToken) }, context)
+        //eThreeParams.keyPairType = KeyPairType.CURVE25519_ROUND5_ED25519_FALCON
         eThree = EThree(eThreeParams)
         _log("Initialized")
         callback()
@@ -133,6 +134,7 @@ class Device(val identity: String, val context: Context) {
 
                 if (throwable is EThreeException) {
                     if (eThree.hasLocalPrivateKey()) {
+                        _log("cleanup")
                         eThree.cleanup()
                     }
                     eThree.rotatePrivateKey().addCallback(object : OnCompleteListener {
@@ -142,7 +144,7 @@ class Device(val identity: String, val context: Context) {
                         }
 
                         override fun onError(throwable: Throwable) {
-
+                            _log("Failed rotatePrivateKey: $throwable")
                         }
                     })
                 }
@@ -153,7 +155,9 @@ class Device(val identity: String, val context: Context) {
 
     fun findUsers(identities: List<String>, callback: (FindUsersResult) -> Unit) {
         val eThree = getEThreeInstance()
-
+//        val authToken =eThree.createGroup("12345678900")
+//        val encrypt = authToken.get().encrypt("11111")
+//        _log("createGroup: $encrypt")
         //# start of snippet: e3kit_lookup_public_keys
         eThree.findUsers(identities).addCallback(object : OnResultListener<FindUsersResult> {
             override fun onError(throwable: Throwable) {

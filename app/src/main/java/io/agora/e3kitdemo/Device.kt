@@ -24,7 +24,6 @@ class Device(val identity: String, private val context: Context) {
     private val benchmarking = false
 
     fun _log(e: String) {
-        log("[$identity] $e")
         Log.i("e3kit", e)
     }
 
@@ -32,7 +31,7 @@ class Device(val identity: String, private val context: Context) {
 
         //# start of snippet: e3kit_authenticate
         fun authenticate(): String {
-            val baseUrl = "http://a41.easemob.com/authenticate"
+            val baseUrl = BuildConfig.E3KIT_APP_SERVER + "/authenticate"
             val fullUrl = URL(baseUrl)
 
             val urlConnection = fullUrl.openConnection() as HttpURLConnection
@@ -69,7 +68,7 @@ class Device(val identity: String, private val context: Context) {
         //# start of snippet: e3kit_jwt_callback
         fun getVirgilJwt(authToken: String): String {
             try {
-                val baseUrl = "http://a41.easemob.com/virgil-jwt"
+                val baseUrl = BuildConfig.E3KIT_APP_SERVER + "/virgil-jwt"
                 val fullUrl = URL(baseUrl)
 
                 val urlConnection = fullUrl.openConnection() as HttpURLConnection
@@ -108,7 +107,7 @@ class Device(val identity: String, private val context: Context) {
         //# end of snippet: e3kit_initialize
     }
 
-    fun getEThreeInstance(): EThree {
+    private fun getEThreeInstance(): EThree {
         val eThree = eThree
 
         if (eThree == null) {
@@ -171,6 +170,13 @@ class Device(val identity: String, private val context: Context) {
 
         })
         //# end of snippet: e3kit_lookup_public_keys
+    }
+
+    fun logout() {
+        if (getEThreeInstance().hasLocalPrivateKey()) {
+            _log("cleanup")
+            getEThreeInstance().cleanup()
+        }
     }
 
     fun encrypt(text: String, findUsersResult: FindUsersResult): String {

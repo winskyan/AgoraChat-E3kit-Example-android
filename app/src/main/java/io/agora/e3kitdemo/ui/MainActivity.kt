@@ -1,4 +1,4 @@
-package io.agora.e3kitdemo
+package io.agora.e3kitdemo.ui
 
 import android.os.Bundle
 import android.os.StrictMode
@@ -6,6 +6,8 @@ import android.text.method.ScrollingMovementMethod
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.virgilsecurity.android.common.model.FindUsersResult
+import io.agora.e3kitdemo.Device
+import io.agora.e3kitdemo.R
 
 
 var log: ((String) -> Unit) = {};
@@ -37,8 +39,8 @@ class MainActivity : AppCompatActivity() {
 
         log = ::logTextView
 
-        alice = Device("qqqqq", this.applicationContext)
-        bob = Device("wwwwww", this.applicationContext)
+        alice = Device("11111", this.applicationContext)
+        bob = Device("22222", this.applicationContext)
 
         main()
     }

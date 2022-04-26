@@ -10,7 +10,7 @@ class DemoHelper private constructor() {
     }
 
     private lateinit var context: Context
-    private lateinit var device: Device
+    private var device: Device? = null
 
     public fun getContext(): Context {
         return context
@@ -52,14 +52,16 @@ class DemoHelper private constructor() {
     }
 
     fun initEThree(identity: String, context: Context) {
-        device = Device(identity, context.applicationContext)
-        device.initialize {
-            device.register { }
+        if (null == device) {
+            device = Device(identity, context.applicationContext)
+            device!!.initialize {
+                device!!.register { }
+            }
         }
     }
 
     fun logout() {
-        device.logout()
+        device!!.logout()
     }
 
 }

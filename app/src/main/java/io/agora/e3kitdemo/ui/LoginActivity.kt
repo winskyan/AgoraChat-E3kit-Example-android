@@ -9,14 +9,12 @@ import android.widget.TextView
 import androidx.appcompat.app.ActionBar
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import io.agora.e3kitdemo.DemoHelper
 import io.agora.e3kitdemo.R
 import io.agora.e3kitdemo.base.BaseActivity
 import io.agora.e3kitdemo.databinding.ActivityLoginBinding
-import io.agora.e3kitdemo.utils.EaseThreadManager
-import io.agora.e3kitdemo.utils.OnResourceParseCallback
 import io.agora.e3kitdemo.login.LoginViewModel
 import io.agora.e3kitdemo.net.Resource
+import io.agora.e3kitdemo.utils.OnResourceParseCallback
 import kotlinx.android.synthetic.main.activity_login.*
 
 
@@ -59,13 +57,7 @@ class LoginActivity : BaseActivity() {
                 response,
                 object : OnResourceParseCallback<Boolean?>() {
                     override fun onSuccess(data: Boolean?) {
-                        EaseThreadManager.instance.runOnIOThread(kotlinx.coroutines.Runnable {
-                            DemoHelper.demoHelper.initEThree(
-                                binding.etAgoraId.toString(),
-                                mContext
-                            )
-                        })
-                        val intent = Intent(mContext, MainChatActivity::class.java)
+                        val intent = Intent(mContext, MainActivity::class.java)
                         startActivity(intent)
                         finish()
                     }

@@ -154,9 +154,6 @@ class Device(val identity: String, private val context: Context) {
 
     fun findUsers(identities: List<String>, callback: (FindUsersResult) -> Unit) {
         val eThree = getEThreeInstance()
-//        val authToken =eThree.createGroup("12345678900")
-//        val encrypt = authToken.get().encrypt("11111")
-//        _log("createGroup: $encrypt")
         //# start of snippet: e3kit_lookup_public_keys
         eThree.findUsers(identities).addCallback(object : OnResultListener<FindUsersResult> {
             override fun onError(throwable: Throwable) {

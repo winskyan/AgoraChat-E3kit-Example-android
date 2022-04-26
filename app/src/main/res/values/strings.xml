@@ -29,4 +29,6 @@
     <string name="error_message_external_logic_blocked">Message blocked by content moderation</string>
 
     <string name="network_disconnect">Network error</string>
+    <string name="say_hi">say hi...</string>
+    <string name="sendto">sendTo</string>
 </resources>

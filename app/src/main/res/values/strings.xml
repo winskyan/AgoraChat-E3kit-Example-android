@@ -2,7 +2,7 @@
     <string name="app_name">AgoraChat E3 Example</string>
     <string name="login_none">User not login</string>
     <string name="login_user_info">current user is:%1$s</string>
-    <string name="login">Login</string>
+    <string name="login">Register than login</string>
     <string name="logout">LogOut</string>
     <string name="chats">E3EncryptChats</string>
 

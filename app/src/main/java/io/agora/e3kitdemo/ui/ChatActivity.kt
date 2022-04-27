@@ -19,9 +19,12 @@ import io.agora.chat.ChatClient
 import io.agora.chat.ChatMessage
 import io.agora.chat.TextMessageBody
 import io.agora.e3kitdemo.Constants
+import io.agora.e3kitdemo.DemoHelper
 import io.agora.e3kitdemo.R
 import io.agora.e3kitdemo.base.BaseActivity
 import io.agora.e3kitdemo.databinding.ActivityChatBinding
+import io.agora.util.EMLog
+import java.util.*
 
 
 class ChatActivity : BaseActivity() {
@@ -30,6 +33,7 @@ class ChatActivity : BaseActivity() {
     private var actionBar: ActionBar? = null
     private lateinit var messageList: MutableList<ChatMessage>
     private lateinit var adapter: MessageListAdapter
+    private var eGroup: com.virgilsecurity.android.common.model.Group? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +50,7 @@ class ChatActivity : BaseActivity() {
 
     private fun initView() {
         sendTo = intent.getStringExtra(Constants.SEND_TO)
+
         actionBar!!.title = sendTo
 
         binding.messageList.layoutManager = LinearLayoutManager(this)
@@ -59,6 +64,21 @@ class ChatActivity : BaseActivity() {
 
         adapter = MessageListAdapter()
         binding.messageList.adapter = adapter
+    }
+
+    private fun initData() {
+        messageList = ArrayList(0)
+        val conversation = ChatClient.getInstance().chatManager().getConversation(sendTo)
+        eGroup = DemoHelper.demoHelper.getConversationGroupMap()[conversation.conversationId()]
+        if (null != conversation) {
+            val lastMessage = conversation.allMessages
+            if (lastMessage.size > 0) {
+                messageList.addAll(conversation.loadMoreMsgFromDB(lastMessage[0].msgId, 50))
+                messageList.addAll(lastMessage)
+                setListData()
+                refreshToLastView()
+            }
+        }
     }
 
     private fun initListener() {
@@ -119,20 +139,17 @@ class ChatActivity : BaseActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun initData() {
-        messageList = ArrayList(0)
-        val conversation = ChatClient.getInstance().chatManager().getConversation(sendTo)
-        if (null != conversation) {
-            val lastMessage = conversation.allMessages
-            messageList.addAll(conversation.loadMoreMsgFromDB(lastMessage[0].msgId, 50))
-            messageList.addAll(lastMessage)
-            setListData();
-            refreshToLastView()
-        }
-    }
 
     private fun sendTxtMessage(content: String) {
-        val message = ChatMessage.createTxtSendMessage(content, sendTo)
+        var messageContent = content;
+        if (eGroup != null) {
+            messageContent = eGroup!!.encrypt(content)
+            EMLog.i(Constants.TAG, "encrypt content:$messageContent")
+        }
+        val message = ChatMessage.createTxtSendMessage(
+            messageContent,
+            sendTo
+        )
         message.chatType = ChatMessage.ChatType.Chat
         message.setMessageStatusCallback(object : CallBack {
             override fun onSuccess() {
@@ -204,12 +221,72 @@ class ChatActivity : BaseActivity() {
                 holder.receiverGroup.visibility = GONE
                 holder.senderGroup.visibility = VISIBLE
                 holder.sender.text = chatMessage.from
-                holder.sendContent.text = (chatMessage.body as TextMessageBody).message
+                if (null != eGroup) {
+                    DemoHelper.demoHelper.findUserCard(chatMessage.from) {
+                        runOnUiThread {
+                            if (null == it) {
+                                holder.sendContent.text =
+                                    (chatMessage.body as TextMessageBody).message
+                            } else {
+
+                                try {
+                                    holder.sendContent.text =
+                                        eGroup!!.decrypt(
+                                            (chatMessage.body as TextMessageBody).message,
+                                            it,
+                                            Date(chatMessage.msgTime)
+                                        )
+                                } catch (ex: Exception) {
+                                    EMLog.i(
+                                        Constants.TAG,
+                                        "decrypt fail:${(chatMessage.body as TextMessageBody).message}"
+                                    )
+                                    holder.sendContent.text =
+                                        (chatMessage.body as TextMessageBody).message
+                                }
+                            }
+
+                        }
+                    }
+                } else {
+                    holder.sendContent.text = (chatMessage.body as TextMessageBody).message
+                }
+
             } else {
                 holder.senderGroup.visibility = GONE
                 holder.receiverGroup.visibility = VISIBLE
                 holder.receiver.text = chatMessage.from
-                holder.receiverContent.text = (chatMessage.body as TextMessageBody).message
+
+                if (null != eGroup) {
+                    DemoHelper.demoHelper.findUserCard(chatMessage.from) {
+                        runOnUiThread {
+                            if (null == it) {
+                                holder.receiverContent.text =
+                                    (chatMessage.body as TextMessageBody).message
+                            } else {
+                                try {
+                                    holder.receiverContent.text =
+                                        eGroup!!.decrypt(
+                                            (chatMessage.body as TextMessageBody).message,
+                                            it,
+                                            Date(chatMessage.msgTime)
+                                        )
+                                } catch (ex: Exception) {
+                                    EMLog.i(
+                                        Constants.TAG,
+                                        "decrypt fail:${(chatMessage.body as TextMessageBody).message}"
+                                    )
+                                    holder.receiverContent.text =
+                                        (chatMessage.body as TextMessageBody).message
+                                }
+                            }
+
+                        }
+                    }
+                } else {
+                    holder.receiverContent.text =
+                        (chatMessage.body as TextMessageBody).message
+                }
             }
         }
 

@@ -2,6 +2,9 @@ package io.agora.e3kitdemo.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import android.view.*
 import android.widget.EditText
 import android.widget.TextView
@@ -11,18 +14,46 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import io.agora.MessageListener
 import io.agora.chat.ChatClient
+import io.agora.chat.ChatMessage
+import io.agora.chat.Conversation
 import io.agora.e3kitdemo.Constants
+import io.agora.e3kitdemo.DemoHelper
 import io.agora.e3kitdemo.R
 import io.agora.e3kitdemo.base.BaseActivity
 import io.agora.e3kitdemo.databinding.ActivityConversationBinding
+import io.agora.util.EMLog
+import java.util.*
 
 
 class ConversationActivity : BaseActivity() {
     private lateinit var binding: ActivityConversationBinding
     private var actionBar: ActionBar? = null
-    private lateinit var conversationIdList: MutableList<String>
     private lateinit var adapter: ConversationListAdapter
+    private lateinit var allConversations: Map<String, Conversation>
+    private lateinit var conversationIdList: List<String>
+    private var conversationIdIndex: Int = 0
+
+    companion object {
+        const val MESSAGE_UPDATE_GROUP = 1
+    }
+
+    private val mHandler: Handler = object : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            super.handleMessage(msg)
+            when (msg.what) {
+                MESSAGE_UPDATE_GROUP -> {
+                    conversationIdIndex++
+                    if (conversationIdIndex < conversationIdList.size) {
+                        updateConversationGroupInfo(conversationIdList[conversationIdIndex])
+                    } else {
+                        binding.loading.visibility = View.GONE
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +65,7 @@ class ConversationActivity : BaseActivity() {
         setContentView(view)
         initView()
         initListener()
+        initData();
     }
 
     private fun initView() {
@@ -54,15 +86,44 @@ class ConversationActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        initData();
+
     }
 
     private fun initListener() {
         adapter.setOnItemClickListener(object : OnItemClickListener {
             override fun onItemClick(position: Int) {
-                val intent = Intent(this@ConversationActivity, ChatActivity::class.java)
-                intent.putExtra(Constants.SEND_TO, conversationIdList[position])
-                startActivity(intent)
+                if (DemoHelper.demoHelper.getConversationList()[position].isNotEmpty()) {
+                    val intent = Intent(this@ConversationActivity, ChatActivity::class.java)
+                    intent.putExtra(
+                        Constants.SEND_TO,
+                        DemoHelper.demoHelper.getConversationList()[position]
+                    )
+                    startActivity(intent)
+                } else {
+                    EMLog.i(Constants.TAG, "group info is null")
+                }
+            }
+        })
+        ChatClient.getInstance().chatManager().addMessageListener(object : MessageListener {
+            override fun onMessageReceived(messages: MutableList<ChatMessage>?) {
+                runOnUiThread { initData() }
+
+            }
+
+            override fun onCmdMessageReceived(messages: MutableList<ChatMessage>?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onMessageRead(messages: MutableList<ChatMessage>?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onMessageDelivered(messages: MutableList<ChatMessage>?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onMessageRecalled(messages: MutableList<ChatMessage>?) {
+                TODO("Not yet implemented")
             }
         })
     }
@@ -80,10 +141,35 @@ class ConversationActivity : BaseActivity() {
                 builder.setView(sendToEt)
                 builder.setPositiveButton(android.R.string.yes) { dialog, which ->
                     if (sendToEt.text.toString().isNotEmpty()) {
-                        val intent = Intent(this@ConversationActivity, ChatActivity::class.java)
-                        intent.putExtra(Constants.SEND_TO, sendToEt.text.toString())
-                        startActivity(intent)
-                        dialog.dismiss()
+                        binding.loading.visibility = View.VISIBLE
+                        val sendTo = sendToEt.text.toString()
+                        val conversation = ChatClient.getInstance().chatManager()
+                            .getConversation(sendTo, Conversation.ConversationType.Chat, true)
+                        conversation.extField = ChatClient.getInstance().currentUser
+
+                        var groupId = ChatClient.getInstance().currentUser + sendTo + "agorachat"
+                        val charArray = groupId.toCharArray()
+                        Arrays.sort(charArray)
+                        groupId = String(charArray)
+
+                        DemoHelper.demoHelper.createGroup(groupId, listOf(sendTo)) {
+                            runOnUiThread {
+                                binding.loading.visibility = View.GONE
+                                DemoHelper.demoHelper.getConversationGroupMap()[conversation.conversationId()] =
+                                    it
+                                adapter.setConversationIdList(DemoHelper.demoHelper.getConversationList())
+                                val intent =
+                                    Intent(
+                                        this@ConversationActivity,
+                                        ChatActivity::class.java
+                                    ).apply {
+                                        putExtra(Constants.SEND_TO, sendTo)
+                                    }
+                                startActivity(intent)
+                                dialog.dismiss()
+                            }
+
+                        }
                     }
                 }
                 builder.setNegativeButton(android.R.string.no) { dialog, which ->
@@ -103,20 +189,56 @@ class ConversationActivity : BaseActivity() {
     }
 
     private fun initData() {
-        val allConversations = ChatClient.getInstance().chatManager().allConversations
-        conversationIdList = ArrayList(allConversations.size)
+        allConversations = ChatClient.getInstance().chatManager().allConversations
+        conversationIdList = allConversations.keys.toList()
         allConversations.forEach {
-            conversationIdList.add(it.key)
+            DemoHelper.demoHelper.getConversationGroupMap()[it.key] = null
         }
-        adapter.setConversationIdList(conversationIdList)
+        adapter.setConversationIdList(DemoHelper.demoHelper.getConversationList())
+
+        if (conversationIdList.isNotEmpty()) {
+            initGroupInfo()
+        }
+    }
+
+    private fun initGroupInfo() {
+        binding.loading.visibility = View.VISIBLE
+        conversationIdIndex = 0;
+        updateConversationGroupInfo(conversationIdList[conversationIdIndex])
+    }
+
+    private fun updateConversationGroupInfo(conversationId: String) {
+        val conversation = allConversations[conversationId]
+        val lastMessage = conversation?.lastMessage
+        if (null != lastMessage) {
+            var groupId = lastMessage.from + lastMessage.to + "agorachat"
+
+            var groupInitiator = conversation.extField
+            if (groupInitiator.isEmpty()) {
+                groupInitiator = lastMessage.from
+                ChatClient.getInstance().chatManager().getConversation(conversationId).extField =
+                    groupInitiator
+            }
+            val charArray = groupId.toCharArray()
+            Arrays.sort(charArray)
+            groupId = String(charArray)
+
+            DemoHelper.demoHelper.loadGroup(
+                groupId,
+                groupInitiator
+            ) { group ->
+                DemoHelper.demoHelper.getConversationGroupMap()[conversationId] = group
+                mHandler.sendEmptyMessage(MESSAGE_UPDATE_GROUP)
+            }
+        }
     }
 
     inner class ConversationListAdapter :
         RecyclerView.Adapter<ConversationListAdapter.ConversationViewHolder>() {
-        private var conversationIdList: MutableList<String> = ArrayList(0)
+        private var conversationIdList: List<String> = ArrayList(0)
         private var itemClickListener: OnItemClickListener? = null
 
-        fun setConversationIdList(list: MutableList<String>) {
+        fun setConversationIdList(list: List<String>) {
             conversationIdList = list
             notifyDataSetChanged()
         }
@@ -143,10 +265,12 @@ class ConversationActivity : BaseActivity() {
 
         inner class ConversationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val conversationId: TextView = view.findViewById(R.id.conversation_id)
-
         }
+    }
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        mHandler.removeCallbacksAndMessages(null)
     }
 
     interface OnItemClickListener {

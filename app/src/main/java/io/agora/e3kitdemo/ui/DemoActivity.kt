@@ -6,8 +6,8 @@ import android.text.method.ScrollingMovementMethod
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.virgilsecurity.android.common.model.FindUsersResult
-import io.agora.e3kitdemo.Device
 import io.agora.e3kitdemo.R
+import io.agora.e3kitdemo.e3kit.Device
 
 
 var log: ((String) -> Unit) = {};
@@ -77,9 +77,13 @@ class DemoActivity : AppCompatActivity() {
 
     fun lookupPublicKeys(callback: () -> Unit) {
         alice.findUsers(listOf(bob.identity)) { bobResult ->
-            bobUsers = bobResult
+            if (null != bobResult) {
+                bobUsers = bobResult
+            }
             bob.findUsers(listOf(alice.identity)) { aliceResult ->
-                aliceUsers = aliceResult
+                if (null != aliceResult) {
+                    aliceUsers = aliceResult
+                }
                 callback()
             }
         }

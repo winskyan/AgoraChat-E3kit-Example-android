@@ -5,22 +5,26 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.MenuItem
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.ActionBar
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import io.agora.CallBack
+import io.agora.Error
+import io.agora.chat.ChatClient
+import io.agora.cloud.HttpClientManager
+import io.agora.e3kitdemo.BuildConfig
 import io.agora.e3kitdemo.R
 import io.agora.e3kitdemo.base.BaseActivity
 import io.agora.e3kitdemo.databinding.ActivityLoginBinding
-import io.agora.e3kitdemo.login.LoginViewModel
-import io.agora.e3kitdemo.net.Resource
-import io.agora.e3kitdemo.utils.OnResourceParseCallback
+import io.agora.e3kitdemo.model.LoginBean
+import io.agora.e3kitdemo.utils.ResultCallBack
+import io.agora.e3kitdemo.utils.ThreadManager
 import kotlinx.android.synthetic.main.activity_login.*
+import org.json.JSONObject
 
 
 class LoginActivity : BaseActivity() {
     private lateinit var binding: ActivityLoginBinding
-    private lateinit var viewModel: LoginViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,26 +55,7 @@ class LoginActivity : BaseActivity() {
     }
 
     private fun initData() {
-        viewModel = ViewModelProvider(this).get(LoginViewModel::class.java)
-        viewModel.loginObservable.observe(this, Observer<Resource<Boolean>> { response ->
-            this@LoginActivity.parseResource(
-                response,
-                object : OnResourceParseCallback<Boolean?>() {
-                    override fun onSuccess(data: Boolean?) {
-                        val intent = Intent(mContext, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
-                    }
 
-                    override fun onError(code: Int, message: String?) {
-                        super.onError(code, message)
-                        runOnUiThread {
-                            btn_login.isEnabled = true
-                            setErrorHint(message!!)
-                        }
-                    }
-                })
-        })
     }
 
 
@@ -87,7 +72,50 @@ class LoginActivity : BaseActivity() {
             return
         }
         binding.logoIv.isEnabled = false
-        viewModel.login(agoraID, nickname)
+
+        binding.loading.visibility = View.VISIBLE
+        loginToAppServer(agoraID, nickname, object : ResultCallBack<LoginBean>() {
+            override fun onSuccess(value: LoginBean) {
+                if (!TextUtils.isEmpty(value.accessToken)) {
+                    ChatClient.getInstance()
+                        .loginWithAgoraToken(agoraID, value.accessToken, object : CallBack {
+                            override fun onSuccess() {
+                                runOnUiThread {
+                                    binding.loading.visibility = View.GONE
+                                    val intent = Intent(mContext, MainActivity::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                }
+
+                            }
+
+                            override fun onError(code: Int, error: String) {
+                                runOnUiThread {
+                                    binding.loading.visibility = View.GONE
+                                    btn_login.isEnabled = true
+                                    setErrorHint(error)
+                                }
+                            }
+
+                            override fun onProgress(progress: Int, status: String) {}
+                        })
+                } else {
+                    runOnUiThread {
+                        binding.loading.visibility = View.GONE
+                        btn_login.isEnabled = true
+                        setErrorHint("login fail")
+                    }
+                }
+            }
+
+            override fun onError(error: Int, errorMsg: String) {
+                runOnUiThread {
+                    binding.loading.visibility = View.GONE
+                    btn_login.isEnabled = true
+                    setErrorHint(errorMsg)
+                }
+            }
+        })
     }
 
     private fun setErrorHint(error: String) {
@@ -104,6 +132,50 @@ class LoginActivity : BaseActivity() {
             null,
             null
         )
+    }
+
+    private fun loginToAppServer(
+        username: String,
+        nickname: String,
+        callBack: ResultCallBack<LoginBean>?
+    ) {
+        ThreadManager.instance?.runOnIOThread(Runnable {
+            try {
+                val headers: MutableMap<String, String> =
+                    HashMap()
+                headers["Content-Type"] = "application/json"
+                val request = JSONObject()
+                request.putOpt("userAccount", username)
+                request.putOpt("userNickname", nickname)
+                val url =
+                    BuildConfig.APP_SERVER_PROTOCOL + "://" + BuildConfig.APP_SERVER_DOMAIN + BuildConfig.APP_SERVER_URL
+                val response = HttpClientManager.httpExecute(
+                    url,
+                    headers,
+                    request.toString(),
+                    HttpClientManager.Method_POST
+                )
+                val code = response.code
+                val responseInfo = response.content
+                if (code == 200) {
+                    if (responseInfo != null && responseInfo.isNotEmpty()) {
+                        val `object` = JSONObject(responseInfo)
+                        val token = `object`.getString("accessToken")
+                        val bean = LoginBean()
+                        bean.accessToken = token
+                        bean.userNickname = nickname
+                        callBack?.onSuccess(bean)
+                    } else {
+                        callBack!!.onError(code, responseInfo)
+                    }
+                } else {
+                    callBack!!.onError(code, responseInfo)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace();
+                callBack!!.onError(Error.NETWORK_ERROR, e.message)
+            }
+        })
     }
 }
 

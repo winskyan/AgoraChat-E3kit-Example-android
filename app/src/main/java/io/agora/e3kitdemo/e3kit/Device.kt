@@ -1,14 +1,18 @@
-package io.agora.e3kitdemo;
+package io.agora.e3kitdemo.e3kit;
 
 import android.content.Context
 import android.util.Log
 import com.virgilsecurity.android.common.exception.EThreeException
 import com.virgilsecurity.android.common.model.EThreeParams
 import com.virgilsecurity.android.common.model.FindUsersResult
+import com.virgilsecurity.android.common.model.Group
 import com.virgilsecurity.android.ethree.interaction.EThree
 import com.virgilsecurity.common.callback.OnCompleteListener
 import com.virgilsecurity.common.callback.OnResultListener
 import com.virgilsecurity.sdk.cards.Card
+import io.agora.e3kitdemo.BuildConfig
+import io.agora.e3kitdemo.Constants
+import io.agora.util.EMLog
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
@@ -20,7 +24,6 @@ import kotlin.system.measureTimeMillis
 class Device(val identity: String, private val context: Context) {
 
     private var eThree: EThree? = null
-
     private val benchmarking = false
 
     fun _log(e: String) {
@@ -131,33 +134,46 @@ class Device(val identity: String, private val context: Context) {
             override fun onError(throwable: Throwable) {
                 _log("Failed registering: $throwable")
 
-                if (throwable is EThreeException) {
-                    if (eThree.hasLocalPrivateKey()) {
-                        _log("cleanup")
-                        eThree.cleanup()
-                    }
-                    eThree.rotatePrivateKey().addCallback(object : OnCompleteListener {
-                        override fun onSuccess() {
-                            _log("Rotated private key instead")
-                            callback()
+                if (throwable.message?.contains(
+                        "Private key already exists in local key storage",
+                        ignoreCase = true
+                    ) == true || throwable.message?.contains(
+                        "User is already registered",
+                        ignoreCase = true
+                    ) == true
+                ) {
+                    _log("${throwable.message}")
+                    callback()
+                } else {
+                    if (throwable is EThreeException) {
+                        if (eThree.hasLocalPrivateKey()) {
+                            _log("cleanup")
+                            eThree.cleanup()
                         }
+                        eThree.rotatePrivateKey().addCallback(object : OnCompleteListener {
+                            override fun onSuccess() {
+                                _log("Rotated private key instead")
+                                callback()
+                            }
 
-                        override fun onError(throwable: Throwable) {
-                            _log("Failed rotatePrivateKey: $throwable")
-                        }
-                    })
+                            override fun onError(throwable: Throwable) {
+                                _log("Failed rotatePrivateKey: $throwable")
+                            }
+                        })
+                    }
                 }
             }
         })
         //# end of snippet: e3kit_register
     }
 
-    fun findUsers(identities: List<String>, callback: (FindUsersResult) -> Unit) {
+    fun findUsers(identities: List<String>, callback: (FindUsersResult?) -> Unit) {
         val eThree = getEThreeInstance()
         //# start of snippet: e3kit_lookup_public_keys
         eThree.findUsers(identities).addCallback(object : OnResultListener<FindUsersResult> {
             override fun onError(throwable: Throwable) {
                 _log("Failed finding user $identities: $throwable")
+                callback(null)
             }
 
             override fun onSuccess(result: FindUsersResult) {
@@ -167,13 +183,6 @@ class Device(val identity: String, private val context: Context) {
 
         })
         //# end of snippet: e3kit_lookup_public_keys
-    }
-
-    fun logout() {
-        if (getEThreeInstance().hasLocalPrivateKey()) {
-            _log("cleanup")
-            getEThreeInstance().cleanup()
-        }
     }
 
     fun encrypt(text: String, findUsersResult: FindUsersResult): String {
@@ -220,5 +229,33 @@ class Device(val identity: String, private val context: Context) {
         }
 
         return decryptedText
+    }
+
+    fun logout() {
+        if (getEThreeInstance().hasLocalPrivateKey()) {
+            _log("cleanup")
+            getEThreeInstance().cleanup()
+        }
+    }
+
+    fun createGroup(groupId: String, identities: List<String>, callback: (Group) -> Unit) {
+        findUsers(identities) { userResult ->
+            val group = getEThreeInstance().createGroup(groupId, userResult).get()
+            callback(group)
+        }
+    }
+
+    fun loadGroup(groupId: String, groupInitiator: String, callback: (Group?) -> Unit) {
+        findUsers(listOf(groupInitiator)) { userResult ->
+            if (null == userResult) {
+                callback(null)
+            } else {
+                EMLog.i(Constants.TAG, "find user:${userResult[groupInitiator]}")
+                val group =
+                    getEThreeInstance().loadGroup(groupId, userResult[groupInitiator]!!).get()
+                EMLog.i(Constants.TAG, "load group:${group}")
+                callback(group)
+            }
+        }
     }
 }

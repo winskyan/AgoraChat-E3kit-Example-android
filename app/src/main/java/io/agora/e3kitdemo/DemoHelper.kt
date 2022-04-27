@@ -1,8 +1,12 @@
 package io.agora.e3kitdemo
 
 import android.content.Context
+import com.virgilsecurity.android.common.model.Group
+import com.virgilsecurity.sdk.cards.Card
 import io.agora.chat.ChatClient
 import io.agora.chat.ChatOptions
+import io.agora.e3kitdemo.e3kit.Device
+import io.agora.util.EMLog
 
 class DemoHelper private constructor() {
     companion object {
@@ -11,12 +15,21 @@ class DemoHelper private constructor() {
 
     private lateinit var context: Context
     private var device: Device? = null
+    private var conversationGroupMap: MutableMap<String, Group?> = HashMap(0)
 
-    public fun getContext(): Context {
+    fun getContext(): Context {
         return context
     }
 
-    public fun initAgoraSdk(context: Context) {
+    fun getConversationGroupMap(): MutableMap<String, Group?> {
+        return conversationGroupMap
+    }
+
+    fun getConversationList(): List<String> {
+        return conversationGroupMap.keys.toList()
+    }
+
+    fun initAgoraSdk(context: Context) {
         this.context = context
         //Initialize Agora Chat SDK
         if (initSDK(context.applicationContext)) {
@@ -51,11 +64,11 @@ class DemoHelper private constructor() {
         return options
     }
 
-    fun initEThree(identity: String, context: Context) {
+    fun initEThree(identity: String, context: Context, callback: () -> Unit) {
         if (null == device) {
             device = Device(identity, context.applicationContext)
             device!!.initialize {
-                device!!.register { }
+                device!!.register { callback() }
             }
         }
     }
@@ -64,4 +77,38 @@ class DemoHelper private constructor() {
         device!!.logout()
     }
 
+    fun loadGroup(groupId: String, groupInitiator: String, callback: (Group?) -> Unit) {
+        EMLog.i(
+            Constants.TAG,
+            "loadGroup groupId=${
+                groupId
+            },initiator=$groupInitiator"
+        )
+        device!!.loadGroup(groupId, groupInitiator) {
+            callback(it)
+        }
+    }
+
+    fun createGroup(groupId: String, participants: List<String>, callback: (Group) -> Unit) {
+        EMLog.i(
+            Constants.TAG,
+            "createGroup groupId=${
+                groupId
+            },initiator=$participants"
+        )
+        device!!.createGroup(groupId, participants) {
+            callback(it)
+        }
+    }
+
+    fun findUserCard(identity: String, callback: (Card?) -> Unit) {
+        device!!.findUsers(listOf(identity)) {
+            if (null == it) {
+                callback(null)
+            } else {
+                callback(it[identity]!!)
+            }
+
+        }
+    }
 }

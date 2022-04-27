@@ -8,7 +8,7 @@ import java.util.concurrent.*
 /**
  * Thread manager
  */
-class EaseThreadManager private constructor() {
+class ThreadManager private constructor() {
     private var mIOThreadExecutor: Executor? = null
     private var mMainThreadHandler: Handler? = null
     private fun init() {
@@ -53,12 +53,12 @@ class EaseThreadManager private constructor() {
     companion object {
         @JvmStatic
         @Volatile
-        var instance: EaseThreadManager? = null
+        var instance: ThreadManager? = null
             get() {
                 if (field == null) {
-                    synchronized(EaseThreadManager::class.java) {
+                    synchronized(ThreadManager::class.java) {
                         if (field == null) {
-                            field = EaseThreadManager()
+                            field = ThreadManager()
                         }
                     }
                 }

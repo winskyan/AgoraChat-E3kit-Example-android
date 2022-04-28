@@ -70,11 +70,14 @@ class DemoHelper private constructor() {
             device!!.initialize {
                 device!!.register { callback() }
             }
+        } else {
+            callback()
         }
     }
 
     fun logout() {
         device!!.logout()
+        device = null
     }
 
     fun loadGroup(groupId: String, groupInitiator: String, callback: (Group?) -> Unit) {
@@ -89,12 +92,12 @@ class DemoHelper private constructor() {
         }
     }
 
-    fun createGroup(groupId: String, participants: List<String>, callback: (Group) -> Unit) {
+    fun createGroup(groupId: String, participants: List<String>, callback: (Group?) -> Unit) {
         EMLog.i(
             Constants.TAG,
             "createGroup groupId=${
                 groupId
-            },initiator=$participants"
+            },participants=$participants"
         )
         device!!.createGroup(groupId, participants) {
             callback(it)

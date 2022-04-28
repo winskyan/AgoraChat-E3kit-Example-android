@@ -232,16 +232,17 @@ class Device(val identity: String, private val context: Context) {
     }
 
     fun logout() {
-        if (getEThreeInstance().hasLocalPrivateKey()) {
-            _log("cleanup")
-            getEThreeInstance().cleanup()
-        }
+        _log("logout")
     }
 
-    fun createGroup(groupId: String, identities: List<String>, callback: (Group) -> Unit) {
+    fun createGroup(groupId: String, identities: List<String>, callback: (Group?) -> Unit) {
         findUsers(identities) { userResult ->
-            val group = getEThreeInstance().createGroup(groupId, userResult).get()
-            callback(group)
+            if (null != userResult) {
+                val group = getEThreeInstance().createGroup(groupId, userResult).get()
+                callback(group)
+            } else {
+                callback(null)
+            }
         }
     }
 

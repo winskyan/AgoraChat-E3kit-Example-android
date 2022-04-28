@@ -2,6 +2,7 @@ package io.agora.e3kitdemo.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -126,6 +127,8 @@ class MainActivity : BaseActivity() {
             val intent = Intent(this, ConversationActivity::class.java)
             startActivity(intent)
         }
+
+        binding.loading.setOnTouchListener { v, event -> true }
     }
 
     private fun logout(unbindDeviceToken: Boolean, callBack: ResultCallBack<Boolean>) {

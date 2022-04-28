@@ -174,7 +174,9 @@ class ChatActivity : BaseActivity() {
     }
 
     fun refreshToLastView() {
-        binding.messageList.smoothScrollToPosition(adapter.itemCount - 1)
+        if (adapter.itemCount >= 1) {
+            binding.messageList.smoothScrollToPosition(adapter.itemCount - 1)
+        }
     }
 
     fun setListData() {

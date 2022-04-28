@@ -126,6 +126,8 @@ class ConversationActivity : BaseActivity() {
                 TODO("Not yet implemented")
             }
         })
+
+        binding.loading.setOnTouchListener { v, event -> true }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -152,23 +154,32 @@ class ConversationActivity : BaseActivity() {
                         Arrays.sort(charArray)
                         groupId = String(charArray)
 
-                        DemoHelper.demoHelper.createGroup(groupId, listOf(sendTo)) {
-                            runOnUiThread {
-                                binding.loading.visibility = View.GONE
-                                DemoHelper.demoHelper.getConversationGroupMap()[conversation.conversationId()] =
-                                    it
-                                adapter.setConversationIdList(DemoHelper.demoHelper.getConversationList())
-                                val intent =
-                                    Intent(
-                                        this@ConversationActivity,
-                                        ChatActivity::class.java
-                                    ).apply {
-                                        putExtra(Constants.SEND_TO, sendTo)
-                                    }
-                                startActivity(intent)
-                                dialog.dismiss()
+                        DemoHelper.demoHelper.createGroup(
+                            groupId,
+                            listOf(sendTo)
+                        ) {
+                            if (null == it) {
+                                runOnUiThread {
+                                    binding.loading.visibility = View.GONE
+                                    dialog.dismiss()
+                                }
+                            } else {
+                                runOnUiThread {
+                                    binding.loading.visibility = View.GONE
+                                    DemoHelper.demoHelper.getConversationGroupMap()[conversation.conversationId()] =
+                                        it
+                                    adapter.setConversationIdList(DemoHelper.demoHelper.getConversationList())
+                                    val intent =
+                                        Intent(
+                                            this@ConversationActivity,
+                                            ChatActivity::class.java
+                                        ).apply {
+                                            putExtra(Constants.SEND_TO, sendTo)
+                                        }
+                                    startActivity(intent)
+                                    dialog.dismiss()
+                                }
                             }
-
                         }
                     }
                 }

@@ -42,6 +42,7 @@ class LoginActivity : BaseActivity() {
 
     private fun initListener() {
         binding.btnLogin.setOnClickListener { loginToAgoraChat() }
+        binding.loading.setOnTouchListener { v, event -> true }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

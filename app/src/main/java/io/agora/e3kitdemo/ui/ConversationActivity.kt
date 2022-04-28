@@ -149,7 +149,10 @@ class ConversationActivity : BaseActivity() {
                             .getConversation(sendTo, Conversation.ConversationType.Chat, true)
                         conversation.extField = ChatClient.getInstance().currentUser
 
-                        var groupId = ChatClient.getInstance().currentUser + sendTo + "agorachat"
+                        var groupId =
+                            ChatClient.getInstance().currentUser.toLowerCase(Locale.ROOT) + sendTo.toLowerCase(
+                                Locale.ROOT
+                            ) + "agorachat"
                         val charArray = groupId.toCharArray()
                         Arrays.sort(charArray)
                         groupId = String(charArray)
@@ -222,7 +225,9 @@ class ConversationActivity : BaseActivity() {
         val conversation = allConversations[conversationId]
         val lastMessage = conversation?.lastMessage
         if (null != lastMessage) {
-            var groupId = lastMessage.from + lastMessage.to + "agorachat"
+            var groupId = lastMessage.from.toLowerCase(Locale.ROOT) + lastMessage.to.toLowerCase(
+                Locale.ROOT
+            ) + "agorachat"
 
             var groupInitiator = conversation.extField
             if (groupInitiator.isEmpty()) {

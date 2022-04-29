@@ -13,6 +13,10 @@ The Device class is used to interact with e3kit and DemoHelper is used to manage
 
 An encrypted session means that only users on both sides of the chat can see the specific content of the current message after receiving the message (the server does not know the content of the message). It protects the privacy of user chat content very well.
 
+The interaction process is as follows
+![AgoraChatEThreeProcess](https://user-images.githubusercontent.com/3213611/165893823-c8045a6c-ceec-44c7-baea-b2ad5c1d9ff0.png)
+
+
 ## How to implement encrypted sessions
 
 ### We use the group encryption function of VirgilE3Kit to ensure that users can see the historical messages in the local database.
